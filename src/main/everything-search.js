@@ -332,14 +332,30 @@ class EverythingSearch {
 
     // 时间相关转换
     if (query.includes('今天') || query.includes('today')) {
-      query = query.replace(/(今天|today)/gi, 'dm:today');
+      query = query.replace(/(今天|today)/gi, 'dm:today ');
     }
     if (query.includes('昨天') || query.includes('yesterday')) {
-      query = query.replace(/(昨天|yesterday)/gi, 'dm:yesterday');
+      query = query.replace(/(昨天|yesterday)/gi, 'dm:yesterday ');
     }
     if (query.includes('本周') || query.includes('this week')) {
-      query = query.replace(/(本周|this week)/gi, 'dm:thisweek');
+      query = query.replace(/(本周|this week)/gi, 'dm:thisweek ');
     }
+    if (query.includes('本月') || query.includes('this month')) {
+      query = query.replace(/(本月|this month)/gi, 'dm:thismonth ');
+    }
+    if (query.includes('今年') || query.includes('this year')) {
+      query = query.replace(/(今年|this year)/gi, 'dm:thisyear ');
+    }
+    if (query.includes('上周') || query.includes('last week')) {
+      query = query.replace(/(上周|last week)/gi, 'dm:lastweek ');
+    }
+    if (query.includes('上个月') || query.includes('last month')) {
+      query = query.replace(/(上个月|last month)/gi, 'dm:lastmonth ');
+    }
+    if (query.includes('去年') || query.includes('last year')) {
+      query = query.replace(/(去年|last year)/gi, 'dm:lastyear ');
+    }
+
 
     // 文件类型转换
     const typeReplacements = {
