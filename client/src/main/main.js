@@ -1,10 +1,11 @@
 const { app, BrowserWindow, ipcMain, dialog, shell, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
-const OpenAI = require('openai');
+const AISearchEngine = require('./ai-search-engine'); // 引入AI搜索引擎
 const EverythingSearch = require('./everything-search');
 const EverythingManager = require('./everything-manager');
 const axios = require('axios');
+const { OpenAI } = require('openai');
 
 // 初始化配置存储
 const store = new Store();
@@ -489,585 +490,7 @@ ipcMain.handle('search-files', async (event, query, enableStreamDebug = false) =
           content: `你是一个专业的Everything搜索语法生成器。请将用户的自然语言查询转换为Everything搜索语法，并以JSON格式返回结果。`
         }, {
           role: 'user',
-          content: `
-根据everything搜索语法，将以下自然语言转化为合规语法:
-
-【语法定义】
-Syntax
-Operators
-
-space\tAND
-|\tOR
-!\tNOT
-< >\tGrouping
-" "\tSearch for an exact phrase
-
-Wildcards
-
-*\tMatches zero of more characters.
-?\tMatches one character.
-
-Wildcards match the whole filename. Disable Match whole filename when using wildcards to match wildcards anywhere in the filename.
-
-Modifiers
-
-Functions and regular search terms can be prefixed with a modifier.
-
-
-ascii:
-utf8:
-noascii:\tEnable or disable fast ASCII case comparisons.
-case:
-nocase:\tMatch or ignore case.
-diacritics:
-nodiacritics:\tMatch or ignore accent marks.
-file:
-files:
-nofileonly:\tMatch files only.
-folder:
-folders:
-nofolderonly:\tMatch folders only.
-path:
-nopath:\tMatch the full path and file name or just the filename.
-regex:
-noregex:\tEnable or disable regex.
-wfn:
-wholefilename:
-nowfn:
-nowholefilename:
-exact:\tMatch the whole filename or match anywhere in the filename.
-wholeword:
-ww:
-nowholeword:
-noww:\tMatch whole words or match anywhere in the filename.
-wildcards:
-nowildcards:\tEnable or disable wildcards.
-
-Functions
-
-album:<album>\tSearch for the ID3 or FLAC album.
-artist:<artist>\tSearch for the ID3 or FLAC artist.
-attrib:<attributes>
-attributes:<attributes>\tSearch for files and folders with the specified file attributes.
-bitdepth:<bitdepth>\tFind images with the specified bits per pixel.
-child:<filename>\tSearch for folders that contain a child file or folder with a matching filename.
-childcount:<count>\tSearch for folders that contain the specified number of subfolders and files.
-childfilecount:<count>\tSearch for folders that contain the specified number of files.
-childfoldercount:<count>\tSearch for folders that contain the specified number of subfolders.
-comment:<comment>\tSearch for the ID3 or FLAC comment.
-content:
-ansicontent:
-utf8content:
-utf16content:
-utf16becontent:\tSearch file content.
-count:<max>\tLimit the number of results to max.
-dateaccessed:<date>
-da:<date>\tSearch for files and folders with the specified date accessed.
-datecreated:<date>
-dc:<date>\tSearch for files and folders with the specified date created.
-datemodified:<date>
-dm:<date>\tSearch for files and folders with the specified date modified.
-daterun:<date>
-dr:<date>\tSearch for files and folders with the specified date run.
-depth:<count>
-parents:<count>\tSearch for files and folders with the specified folder depth.
-dimension:<width>x<height>\tFind images with the specified width and height.
-dupe:
-namepartdupe:
-attribdupe:
-dadupe:
-dcdupe:
-dmdupe:
-sizedupe:\tSearch for duplicated files.
-empty:\tSearch for empty folders.
-endwith:<text>\tFilenames (including extension) ending with text.
-ext:<list>\tSearch for files with a matching extension in the specified semicolon delimited extension list.
-filelist:<list>\tSearch for a list of file names in the specified pipe (|) delimited file list.
-filelistfilename:<filename>\tSearch for files and folders belonging to the file list filename.
-frn:<frnlist>\tSearch for files and folders with the specified semicolon delimited File Reference Numbers.
-fsi:<index>\tSearch for files and folders in the specified zero based internal file system index.
-genre:<genre>\tSearch for the ID3 or FLAC genre.
-height:<height>\tSearch for images with the specified height in pixels.
-len:<length>\tSearch for files and folders that match the specified filename length.
-orientation:<type>\tSearch for images with the specified orientation (landscape or portrait).
-parent:<path>
-infolder:<path>
-nosubfolders:<path>\tSearch for files and folders in the specified path, excluding subfolders.
-recentchange:<date>
-rc:<date>\tSearch for files and folders with the specified recently changed date.
-root:\tSearch for files and folders with no parent folder.
-runcount:<count>\tSearch for files and folders with the specified run count.
-shell:<name>\tSearch for a known shell folder name, including subfolders and files.
-size:<size>\tSearch for files with the specified size in bytes.
-startwith:<text>\tSearch for filenames starting with text.
-title:<title>\tSearch for the ID3 or FLAC title.
-type:<type>\tSearch for files and folders with the specified file type.
-width:<width>\tSearch for images with the specified width in pixels.
-
-Function syntax
-
-function:value\tEqual to value.
-function:<=value\tLess than or equal to value.
-function:<value\tLess than value.
-function:=value\tEqual to value.
-function:>value\tGreater than value.
-function:>=value\tGreater than or equal to value.
-function:start..end\tIs in the range of values from start to end.
-function:start-end\tIs in the range of values from start to end.
-
-Size Syntax:
-
-size[kb|mb|gb]
-
-
-Size Constants:
-
-empty\t
-tiny\t0 KB < size <= 10 KB
-small\t10 KB < size <= 100 KB
-medium\t100 KB < size <= 1 MB
-large\t1 MB < size <= 16 MB
-huge\t16 MB < size <= 128 MB
-gigantic\tsize > 128 MB
-unknown\t
-
-Date Syntax:
-
-year
-
-month/year or year/month depending on locale settings
-
-day/month/year, month/day/year or year/month/day depending on locale settings
-
-YYYY[-MM[-DD[Thh[:mm[:ss[.sss]]]]]]
-
-YYYYMM[DD[Thh[mm[ss[.sss]]]]]
-
-
-Date Constants:
-
-today
-
-yesterday
-
-<last|past|prev|current|this|coming|next><year|month|week>
-
-<last|past|prev|coming|next><x><years|months|weeks>
-
-<last|past|prev|coming|next><x><hours|minutes|mins|seconds|secs>
-
-january|february|march|april|may|june|july|august|september|october|november|december
-
-jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec
-
-sunday|monday|tuesday|wednesday|thursday|friday|saturday
-
-sun|mon|tue|wed|thu|fri|sat
-
-unknown
-
-
-Attribute Constants:
-
-A\tArchive
-C\tCompressed
-D\tDirectory
-E\tEncrypted
-H\tHidden
-I\tNot content indexed
-L\tReparse point
-N\tNormal
-O\tOffline
-P\tSparse file
-R\tRead only
-S\tSystem
-T\tTemporary
-V\tDevice
-
-Content Searching
-Warning: content searching is extremely slow.
-
-File content is not indexed.
-
-
-Please combine content: functions with other filters for the best performance.
-
-
-Content search functions:
-
-content:<text>\tSearch file content using the associated iFilter. If no iFilter exists UTF-8 content is used.
-ansicontent:<text>\tFile contents are treated as ANSI text.
-utf8content:<text>\tFile contents are treated as UTF-8 text.
-utf16content:<text>\tFile contents are treated as UTF-16 (Unicode) text.
-utf16becontent:<text>\tFile contents are treated as UTF-16 (Big Endian) text.
-
-Example, find emails, modified this week, containing the text "banana":
-
-*.eml dm:thisweek content:banana
-
-* Note: content: is used last in the search above, this means Everything will only search the content of files that matched the previous search *.eml dm:thisweek
-
-
-ID3 Tags
-The following search functions can be used to search for ID3 tags and FLAC tags:
-
-track:<track>\tTrack number or track range.
-year:<year>\tTear or year range.
-title:<title>\tSong title.
-artist:<artist>\tSong Artist.
-album:<album>\tAlbum name.
-comment:<comment>\tTrack comment.
-genre:<genre>\tTrack genre.
-
-ID3v1 is fully supported.
-
-ID3v2, ID3v2.3 and ID3v2.4 are loosely supported.
-
-
-ID3 tags and FLAC tags are not indexed. Searching for ID3 tags and FLAC tags is slow, combine with other searches for the best performance.
-
-Only ID3 tags in mp3 files are currently supported.
-
-
-Examples:
-
-year:2002..2005
-genre:electronic
-regex:album:^[a-n]
-wildcards:title:red*
-track:>10
-year:>=2000
-
-Image information
-The following functions can be used to search for image dimensions
-
-width:<width>\tThe width of the image in pixels.
-height:<height>\tThe height of the image in pixels.
-dimensions:<width>x<height>\tThe width and height of the image in pixels. Use a x to separate the width and height.
-orientation:<type>\t<type> can landscape or portrait.
-bitdepth:<bitdepth>\tFind images with the specified bits per pixel.
-
-Image information is not indexed. Searching for image information is slow, combine with other searches for the best performance.
-
-Only jpg, png, gif and bmp files are supported.
-
-
-Examples:
-
-width:>2560
-width:800..1920
-height:600..1080
-dimensions:800x600..1920x1080
-
-Duplicated Files
-The following functions can be used to search for duplicated files.
-
-dupe:\tFind files and folders with the same filename.
-attribdupe:\tFind files and folders with the same attributes. Sort by attributes for the best results.
-dadupe:\tFind files and folders with the same date accessed. Sort by date accessed for the best results.
-dcdupe:\tFind files and folders with the same date created. Sort by date created for the best results.
-dmdupe:\tFind files and folders with the same date modified. Sort by date modified for the best results.
-namepartdupe:\tFind files and folders with the same name part (excluding extension).
-sizedupe:\tFind files and folders with the same size. Sort by size for the best results.
-
-Duplicates are found in the ENTIRE index, not the current results.
-
-Search and sort results by the same dupe type for the best results.
-
-
-Everything does not check file contents. Use the dupe finding functions as a guide only.
-
-
-Examples:
-
-dupe: .mp4
-size:>1gb sizedupe:
-
-Filters
-Filters are predefined searches. Only one filter can be active at a time. Filters can be toggled from the Search menu.
-
-
-To create a new filter:
-
-In Everything, from the Search menu, click Add to filters....
-
-Type in a Name.
-
-Click OK.
-
-
-To edit an existing filter:
-
-In Everything, from the Search menu, click Organize filters....
-
-Select a filter.
-
-Click Edit.
-
-
-To create a search macro:
-
-In Everything, from the Search menu, click Organize filters....
-
-Select a filter.
-
-Click Edit.
-
-Set macro to your search shortcut, for example: photos
-
-The photos: search will now be replaced with this filter's search.
-
-Click OK.
-
-Click OK.
-
-
-To create a filter keyboard shortcut:
-
-In Everything, from the Search menu, click Organize filters....
-
-Select a filter.
-
-Click Edit.
-
-Click to the right of Keyboard shortcut and press a new keyboard shortcut.
-
-Click OK.
-
-Click OK.
-
-
-Filters can be accessed from the Search menu, filter bar (View -> Filters), right clicking the status bar, filter macro or filter keyboard shortcut.
-
-
-Bookmarks
-Bookmarks can save the current search, filter, sort and index.
-
-
-To create a new bookmark from the current search:
-
-In Everything, from the Bookmarks menu, click Add to bookmarks....
-
-Type in a Name.
-
-Click OK.
-
-
-To organize bookmarks:
-
-In Everything, from the Bookmarks menu, click Organize bookmarks....
-
-
-Home Search
-The home search is the default search when you first open an Everything search window.
-
-The home search can be opened by pressing Alt + Home.
-
-
-To change the home search settings:
-
-In Everything, from the Tools menu, click Options.
-
-Click the '''Home''' tab.
-
-Set the desired search, search options, sort order and view options.
-
-Click OK.
-
-
-Macros
-Custom macros can be defined by filters and bookmarks.
-
-
-To create a custom filter macro:
-
-Create a new filter or edit an existing one.
-
-Type in a macro name, for example:
-
-foo
-Click OK.
-
-Click OK.
-
-Searching for foo: will now be replaced by the filter's search.
-
-
-Regex
-Regex overrides the search syntax. Search operators, wildcards, macros, modifiers and functions do not work in regex mode.
-
-Regex must be enabled from the Search menu or prefix the search with regex:
-
-When using the regex: modifier, please escape | and space with double quotes.
-
-
-a|b\tMatches a or b
-gr(a|e)y\tMatches gray or grey
-.\tMatches any single character
-[abc]\tMatches a single character a, b or c
-[^abc]\tMatches any single character except a, b or c
-[a-z]\tMatches a single character in the range a to z
-[a-zA-Z]\tMatches a single character in the range a to z or A to Z
-^\tMatches the start of the filename
-$\tMatches the end of the filename
-*\tMatches the preceding element zero or more times
-?\tMatches the preceding element zero or one times
-+\tMatches the preceding element one or more times
-{x}\tMatches the preceding element x times
-{x,}\tMatches the preceding element x or more times
-{x,y}\tMatches the preceding element between x and y times
-\\\tEscape special character
-
-Search Commands
-The following search commands are special searches that can be activated by typing in the search and pressing ENTER.
-
-
-Search\tAction
-about:\tShow the About dialog.
-about:config\tOpen your Everything.ini
-about:credits\tShow the Everything credits dialog.
-about:home\tOpen the home search.
-about:licence
-about:license\tShow the Everything licence agreement.
-about:options
-about:preferences\tShow the Everything options.
-/close\tClose the Everything search window.
-/closeall\tClose all Everything search windows.
-/command <id>\tRun the specified command ID.
-/config_save\tShow a save as dialog to backup the Everything.ini.
-/config_save <filename>\tBackup the Everything.ini to the specified filename.
-/config_load\tShow a open file dialog to load the Everything.ini.
-/config_load <filename>\tLoad the Everything.ini from the specified filename.
-/debug
-/console\tEnable debug mode.
-/debug_log\tEnable debug mode and start debug logging.
-/help\tShow the help window.
-/monitor_pause\tStops NTFS, ReFS, file lists and folder monitors. Monitors are not started again until specified with /monitor_resume.
-/monitor_resume\tStarts NTFS, ReFS, file lists and folder monitors.
-/quit
-/exit\tExit Everything
-/rebuild
-/reindex\tForce a rebuild
-/restart\tRestart Everything
-/verbose\tEnable verbose debugging.
-/update\tUpdate all folder indexes now.
-/update <folder index>\tUpdate the specifed folder index by path now.
-/<ini option>\tShow the current setting for the specified ini option in the statusbar. Use the TAB key to auto complete.
-/<ini option>=<value>\tSet the specified ini option to the specified value. The new value is shown in the status bar if successful.
-
-For example, to change the status bar selected item format to full path and filename, type in the following search and press ENTER:
-
-/statusbar_selected_item_format=$f
-
-Changing some ini options will require a restart.
-
-
-Limiting results
-To limit the number of results shown, use the count: search function.
-
-For example to limit the number of results shown to 100, include at the start of your search:
-
-count:100
-
-
-【参考案例】
-Search for ABC and 123:
-
-ABC 123
-
-Search for ABC or 123:
-
-ABC|123
-
-Search for everything except ABC:
-
-!ABC
-
-Search for uppercase ABC
-
-case:ABC
-
-Search for mp3 files:
-
-*.mp3
-
-Search for mp3 files on the D: or E: drive:
-
-d:|e: *.mp3
-
-Search for jpg or png files on the D: drive:
-
-d: *.jpg|*.png
-
-Search for files or folders with no extension:
-
-!.
-
-Search for files only:
-
-file:
-
-Search for folders only:
-
-folder:
-
-Limit the search to a single folder:
-
-parent:c:\\windows
-or:
-
-parent:"c:\\program files"
-
-Find files larger than 1MB:
-
-size:>1mb
-
-Find files between 2MB and 10MB:
-
-size:>2mb..10mb
-
-Instantly find files that have changed today:
-
-dm:today
-
-Find files and folders modified this week:
-
-dm:thisweek
-
-Find files and folders modified from the 1st August 2014 to 31st August 2014:
-
-dm:1/8/2014..31/8/2014
-or:
-
-dm:8/1/2014..8/31/2014
-Depending on your locale settings.
-
-
-Find folders in D:\\music that do not contain an mp3 file:
-
-d:\\music\\ !child:mp3
-
-Find filenames with non-ASCII characters:
-
-regex:[^\x00-\x7f]
-
-Find filenames with no characters in the range a-z
-
-!regex:[a-z]
-
-【用户搜索需求】
-${query}
-
-【输出格式要求】
-请严格按照以下JSON格式返回，不要包含任何其他文本：
-{
-  "confidence": 0.95,
-  "original_query": "用户的原始查询",
-  "rules_used": ["使用的语法规则列表"],
-  "alternatives": ["可选的替代查询1", "可选的替代查询2"],
-  "query": "合规搜索语法"
-}
-            `
+          content: buildEverythingSyntaxPrompt(query)
         }];
 
         let responseContent = '';
@@ -1337,6 +760,71 @@ function initEverythingSearch() {
   if (credentials) {
     everythingSearch.setCredentials(credentials.username, credentials.password);
   }
+}
+
+// 构建Everything语法提示词
+function buildEverythingSyntaxPrompt(query) {
+  return `
+根据everything搜索语法，将以下自然语言转化为合规语法:
+
+【语法定义】
+Syntax
+Operators
+
+space	AND
+|	OR
+!	NOT
+< >	Grouping
+" "	Search for an exact phrase
+
+Wildcards
+
+*	Matches zero of more characters.
+?	Matches one character.
+
+【核心函数】
+size:<size>	搜索指定大小的文件
+datemodified:<date>	搜索指定日期修改的文件
+ext:<list>	搜索指定扩展名的文件
+content:<text>	搜索文件内容
+parent:<path>	在指定路径中搜索
+*.mp3	搜索mp3文件
+dm:today	搜索今天修改的文件
+dm:thisweek	搜索本周修改的文件
+
+【时间语法】
+today, yesterday, thisweek, thismonth, thisyear
+lastweek, lastmonth, lastyear
+
+【大小语法】
+size:>1mb	大于1MB的文件
+size:<100kb	小于100KB的文件
+size:>1mb..10mb	1MB到10MB之间的文件
+
+【文件类型】
+图片: *.jpg;*.png;*.gif;*.bmp;*.jpeg
+文档: *.doc;*.docx;*.pdf;*.txt
+视频: *.mp4;*.avi;*.mkv;*.mov
+音频: *.mp3;*.wav;*.flac
+
+【参考案例】
+搜索今天的PDF文档: dm:today *.pdf
+搜索大于1MB的视频: size:>1mb *.mp4;*.avi;*.mkv
+搜索本周修改的图片: dm:thisweek *.jpg;*.png;*.gif
+
+【用户搜索需求】
+${query}
+
+【输出格式要求】
+请严格按照以下JSON格式返回，不要包含任何其他文本：
+{
+  "confidence": 0.95,
+  "original_query": "用户的原始查询",
+  "rules_used": ["使用的语法规则列表"],
+  "alternatives": ["可选的替代查询1", "可选的替代查询2"],
+  "query": "合规搜索语法"
+}
+    `;
 }
 
 // 初始化Everything管理器
