@@ -1,50 +1,75 @@
 <template>
   <!-- 根容器，包含整个应用界面 -->
-  <div class="app-container">
-    <!-- 自定义标题栏区域 -->
-    <div class="custom-titlebar">
-      <!-- 标题栏左侧部分：图标、标题和状态 -->
-      <div class="titlebar-left">
-        <img src="@/asserts/logo.png" alt="Everything AI Chat Logo" class="app-icon" />
-        <div class="app-title">{{ $t('app.title') }}</div>
-        <!-- Everything服务的连接状态指示器 -->
-        <div class="everything-status">
-          <!-- 状态点，根据连接状态改变颜色 -->
-          <div class="status-dot" :class="everythingStatusClass"></div>
-          <!-- 状态文本，显示连接状态 -->
-          <span class="status-text">{{ everythingStatusText }}</span>
+  <div class="app-container neu-raised-hard" style="border-radius: 30px; padding: 24px; margin: 2.5vh 2.5vw; width: 95vw; height: 90vh; display: flex; overflow: hidden;">
+    <!-- 左侧导航栏 -->
+    <aside class="sidebar" style="width: 80px; display: flex; flex-direction: column; align-items: center; gap: 32px; padding: 16px 0; z-index: 20;">
+      <!-- Brand -->
+      <div class="neu-btn-circle active" style="cursor: default; color: var(--primary-color);">
+        <i class="fa-solid fa-robot"></i>
+      </div>
+
+      <!-- Menu -->
+      <nav style="display: flex; flex-direction: column; gap: 24px;">
+        <!-- Search (Active) -->
+        <div class="neu-btn-circle active" :title="$t('search.title')">
+          <i class="fa-solid fa-magnifying-glass"></i>
+        </div>
+        <!-- Debug -->
+        <div v-if="debugConfig.enableStreamDebug" class="neu-btn-circle" @click="openDebugWindow" :title="$t('settings.debug.title')">
+          <div v-if="debugConfig.enableStreamDebug" style="position: absolute; right: 0; top: 0; width: 12px; height: 12px; background: var(--error-color); border-radius: 50%; border: 2px solid var(--bg-color);"></div>
+          <i class="fa-solid fa-bug"></i>
+        </div>
+        <!-- Settings -->
+        <div class="neu-btn-circle" @click="showConfigDialog = true" :title="$t('settings.title')">
+          <i class="fa-solid fa-sliders"></i>
+        </div>
+      </nav>
+
+      <!-- Bottom -->
+      <div class="neu-btn-circle" style="margin-top: auto; color: var(--error-color);" @click="closeWindow" :title="$t('window.close')">
+        <i class="fa-solid fa-power-off"></i>
+      </div>
+    </aside>
+
+    <!-- 右侧主内容区 -->
+    <main style="flex: 1; display: flex; flex-direction: column; padding-left: 24px; gap: 24px;">
+      <!-- 自定义标题栏区域 -->
+      <div class="custom-titlebar">
+        <!-- 标题栏左侧部分：标题和状态 -->
+        <div class="titlebar-left">
+          <div class="app-title">{{ $t('app.title') }}</div>
+          <!-- Everything服务的连接状态指示器 -->
+          <div class="everything-status">
+            <!-- 状态点，根据连接状态改变颜色 -->
+            <div class="status-dot" :class="everythingStatusClass"></div>
+            <!-- 状态文本，显示连接状态 -->
+            <span class="status-text">{{ everythingStatusText }}</span>
+          </div>
+        </div>
+        <!-- 窗口控制按钮：最小化、关闭 -->
+        <div class="window-controls">
+          <button @click="minimizeWindow" class="control-button minimize" :title="$t('window.minimize')" style="width: 32px; height: 32px;">
+            <i class="fa-solid fa-minus"></i>
+          </button>
+          <button @click="closeWindow" class="control-button close" :title="$t('window.close')" style="width: 32px; height: 32px; color: var(--error-color);">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
         </div>
       </div>
-      <!-- 窗口控制按钮：最小化、最大化、关闭 -->
-      <div class="window-controls">
-        <button @click="minimizeWindow" class="control-button minimize" :title="$t('window.minimize')">
-          <span>−</span>
-        </button>
-        <button @click="toggleMaximize" class="control-button maximize" :title="isMaximized ? $t('window.restore') : $t('window.maximize')">
-          <!-- 根据窗口是否最大化显示不同图标 -->
-          <span>{{ isMaximized ? '⧉' : '□' }}</span>
-        </button>
-        <button @click="closeWindow" class="control-button close" :title="$t('window.close')">
-          <span>×</span>
-        </button>
-      </div>
-    </div>
 
-    <!-- 主要搜索功能区域 -->
-    <div class="search-section">
-      <div class="search-container">
-        <div class="search-row">
-          <div class="search-title">{{ $t('search.title') }}</div>
-          <div class="search-input-wrapper">
+      <!-- 主要搜索功能区域 -->
+      <div class="search-section" style="display: flex; flex-direction: column; gap: 16px;">
+      <div class="search-container" style="position: relative; display: flex; align-items: center;">
+        <div class="search-input-wrapper" style="flex: 1;">
             <!-- 搜索输入框 -->
             <input v-model="searchQuery" @keydown.enter="performSearch" @keydown.down.prevent="navigateHistory(1)"
               @keydown.up.prevent="navigateHistory(-1)" @focus="showHistory = true" @blur="hideHistoryDelayed"
               class="search-input" :placeholder="$t('search.placeholder')" :disabled="isSearching"
               ref="searchInput" />
             <!-- 搜索按钮 -->
-            <button @click="performSearch" :disabled="isSearching || !searchQuery.trim()" class="search-button"
+            <button @click="performSearch" :disabled="isSearching || !searchQuery.trim()" class="search-button neu-action-btn"
               :class="{ 'searching': isSearching }">
-              {{ isSearching ? $t('search.searching') : $t('search.button') }}
+              {{ isSearching ? $t('search.searching') : 'SEARCH' }}
             </button>
 
             <!-- 搜索历史下拉列表 -->
@@ -62,127 +87,71 @@
           </div>
         </div>
       </div>
-    </div>
 
-    <!-- 调试窗口控制区域 -->
-    <div v-if="debugConfig.enableStreamDebug" class="debug-controls-bar">
-      <div class="debug-info">
-        <span class="debug-status">🤖 AI响应调试</span>
-      </div>
-      <div class="debug-actions">
-        <button @click="openDebugWindow" class="debug-action-button" title="打开调试窗口">
-          <span class="button-icon">📊</span>
-          打开调试窗口
-        </button>
-        <button @click="clearDebugOutput" class="debug-action-button" title="清空调试输出">
-          <span class="button-icon">🗑️</span>
-          清空
-        </button>
-      </div>
-    </div>
-
-    <!-- 结果显示区域 -->
-    <div class="results-section">
+      <!-- 结果显示区域 -->
+      <div class="results-section">
       <!-- 使用 <template> 进行条件渲染分组，仅在有搜索结果时显示内部所有内容 -->
       <template v-if="searchResults.length > 0">
         <!-- 结果头部信息和操作按钮 -->
-        <div class="results-header">
-          <div class="results-info">
-            <!-- 显示找到的文件数量 -->
-            <div class="results-count">
-              {{ $t('search.found', { count: searchResults.length.toLocaleString() }) }}
+        <div style="display: flex; gap: 24px; height: 100%; overflow: hidden;">
+          <!-- 左侧：结果摘要卡片 -->
+          <div style="width: 25%; display: flex; flex-direction: column; gap: 16px;">
+            <!-- 统计卡片 -->
+            <div class="neu-flat" style="padding: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; height: 128px;">
+              <div style="font-size: 36px; font-weight: 800; color: var(--primary-color);" class="glow-text">{{ searchResults.length.toLocaleString() }}</div>
+              <div style="font-size: 11px; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: 1px;">Files Found</div>
             </div>
-            <!-- 如果AI转换了查询，则显示实际使用的Everything查询语句 -->
-            <div v-if="lastEverythingQuery && lastEverythingQuery !== lastSearchQuery" class="everything-query">
-              {{ $t('search.query', { query: lastEverythingQuery }) }}: <code>{{ lastEverythingQuery }}</code>
-            </div>
-          </div>
-          <div class="results-actions">
-            <!-- 导出结果按钮 -->
-            <button @click="exportResults" class="action-button">
-              <span class="button-icon">📤</span>
-              {{ $t('search.export') }}
-            </button>
-            <!-- 清空结果按钮 -->
-            <button @click="clearResults" class="action-button">
-              <span class="button-icon">🗑️</span>
-              {{ $t('search.clear') }}
-            </button>
-          </div>
-        </div>
 
-        <!-- 文件列表 -->
-        <div class="file-list">
-          <!-- 表头容器，用于横向滚动同步 -->
-          <div class="file-list-header-container" ref="fileListHeader">
-            <!-- 文件列表的表头，点击可进行排序 -->
-            <div class="file-list-header" :class="{ dragging: isDragging }" :style="getHeaderStyle">
-            <div @click="sortBy('name')" :class="['file-list-column', 'col-name', 'sortable', getSortClass('name')]" :style="getColumnStyle('name')">
-              {{ $t('fileList.columns.name') }}
-              <div class="column-resizer" @mousedown="startColumnResize('name', $event)"></div>
-            </div>
-            <div @click="sortBy('path')" :class="['file-list-column', 'col-path', 'sortable', getSortClass('path')]" :style="getColumnStyle('path')">
-              {{ $t('fileList.columns.path') }}
-              <div class="column-resizer" @mousedown="startColumnResize('path', $event)"></div>
-            </div>
-            <div @click="sortBy('size')" :class="['file-list-column', 'col-size', 'sortable', getSortClass('size')]" :style="getColumnStyle('size')">
-              {{ $t('fileList.columns.size') }}
-              <div class="column-resizer" @mousedown="startColumnResize('size', $event)"></div>
-            </div>
-            <div @click="sortBy('modified')" :class="['file-list-column', 'col-modified', 'sortable', getSortClass('modified')]" :style="getColumnStyle('modified')">
-              {{ $t('fileList.columns.modified') }}
-              <div class="column-resizer" @mousedown="startColumnResize('modified', $event)"></div>
-            </div>
-            <!-- 以下列根据配置动态显示 -->
-            <div v-if="displayFields.created" @click="sortBy('created')" :class="['file-list-column', 'col-created', 'sortable', getSortClass('created')]" :style="getColumnStyle('created')">
-              {{ $t('fileList.columns.created') }}
-              <div class="column-resizer" @mousedown="startColumnResize('created', $event)"></div>
-            </div>
-            <div v-if="displayFields.accessed" @click="sortBy('accessed')" :class="['file-list-column', 'col-accessed', 'sortable', getSortClass('accessed')]" :style="getColumnStyle('accessed')">
-              {{ $t('fileList.columns.accessed') }}
-              <div class="column-resizer" @mousedown="startColumnResize('accessed', $event)"></div>
-            </div>
-            <div v-if="displayFields.attributes" @click="sortBy('attributes')" :class="['file-list-column', 'col-attributes', 'sortable', getSortClass('attributes')]" :style="getColumnStyle('attributes')">
-              {{ $t('fileList.columns.attributes') }}
-              <div class="column-resizer" @mousedown="startColumnResize('attributes', $event)"></div>
-            </div>
-            <div v-if="displayFields.run_count" @click="sortBy('run_count')" :class="['file-list-column', 'col-run-count', 'sortable', getSortClass('run_count')]" :style="getColumnStyle('run_count')">
-              {{ $t('fileList.columns.runCount') }}
-              <div class="column-resizer" @mousedown="startColumnResize('run_count', $event)"></div>
-            </div>
-            <div @click="sortBy('extension')" :class="['file-list-column', 'col-type', 'sortable', getSortClass('extension')]" :style="getColumnStyle('type')">
-              {{ $t('fileList.columns.type') }}
-            </div>
+            <!-- AI解析代码展示 -->
+            <div class="neu-flat" style="flex: 1; padding: 20px; display: flex; flex-direction: column; gap: 12px; position: relative; overflow: hidden;">
+              <div style="font-size: 11px; font-weight: 700; color: var(--text-light); text-transform: uppercase; display: flex; justify-content: space-between;">
+                <span>AI Logic</span>
+                <i class="fa-solid fa-wand-magic-sparkles" style="color: var(--primary-color);"></i>
+              </div>
+              <!-- 模拟显示屏 -->
+              <div class="neu-pressed" style="flex: 1; padding: 12px; font-size: 11px; font-family: var(--font-mono); color: var(--text-main); word-break: break-all; line-height: 1.6; user-select: text;">
+                <span style="color: var(--text-light);">query > </span><br>
+                <span v-if="lastEverythingQuery">{{ lastEverythingQuery }}</span>
+                <span v-else style="color: var(--text-light);">等待搜索...</span>
+              </div>
+
+              <!-- 操作按钮 -->
+              <div style="display: flex; justify-content: space-between; gap: 8px; margin-top: 8px;">
+                <button @click="exportResults" class="neu-flat" style="flex: 1; padding: 8px; font-size: 11px; font-weight: 700; color: var(--text-main); border: none; cursor: pointer;">
+                  <i class="fa-solid fa-file-export" style="margin-right: 4px;"></i> Export
+                </button>
+                <button @click="clearResults" class="neu-flat" style="flex: 1; padding: 8px; font-size: 11px; font-weight: 700; color: var(--text-main); border: none; cursor: pointer;">
+                  <i class="fa-solid fa-trash" style="margin-right: 4px;"></i> Clear
+                </button>
+              </div>
             </div>
           </div>
 
-          <!-- 文件列表的主体内容，遍历排序后的结果 -->
-          <div class="file-list-body" ref="fileListBody">
-            <div v-for="file in sortedResults" :key="file.path" @click="openFile(file)"
-              @contextmenu.prevent="showFileContextMenu(file, $event)" class="file-row">
-              <div class="file-cell col-name" :style="getColumnStyle('name')">
-                <span class="file-icon">{{ getFileIcon(file.extension) }}</span>
-                <span class="file-name">{{ getDisplayFileName(file) }}</span>
+          <!-- 右侧：文件列表 -->
+          <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; overflow: hidden;">
+            <!-- 文件列表 -->
+            <div class="file-list-body neu-pressed" ref="fileListBody" style="padding: 16px; overflow-y: auto; flex: 1;">
+              <div style="position: sticky; top: 0; z-index: 10; background: var(--bg-color); padding: 8px 16px; margin-bottom: 8px; display: flex; font-size: 11px; font-weight: 700; color: var(--text-light); text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid rgba(186, 190, 204, 0.3);">
+                <div style="width: 41.67%;">File Name</div>
+                <div style="width: 33.33%;">Path</div>
+                <div style="width: 25%; text-align: right;">Size / Date</div>
               </div>
-              <div class="file-cell col-path" :style="getColumnStyle('path')"><span class="file-path">{{ file.directory }}</span></div>
-              <div class="file-cell col-size" :style="getColumnStyle('size')"><span class="file-size">
-                  {{ formatFileSize(file.size) }}
-                </span></div>
-              <div class="file-cell col-modified" :style="getColumnStyle('modified')"><span class="file-modified">
-                  {{ formatDate(file.modified) }}
-                </span>
+              <div v-for="file in sortedResults" :key="file.path" @click="openFile(file)"
+                @contextmenu.prevent="showFileContextMenu(file, $event)" class="file-row neu-flat">
+                <div class="file-cell col-name" :style="getColumnStyle('name')" style="width: 41.67%;">
+                  <div style="width: 40px; height: 40px; border-radius: 12px; background: var(--bg-color); display: flex; align-items: center; justify-content: center; box-shadow: inset 2px 2px 4px var(--shadow-dark), inset -2px -2px 4px var(--shadow-light); margin-right: 12px;">
+                    <span class="file-icon" style="font-size: 18px;">{{ getFileIcon(file.extension) }}</span>
+                  </div>
+                  <div style="flex: 1; min-width: 0;">
+                    <div class="file-name">{{ getDisplayFileName(file) }}</div>
+                    <div class="file-path" style="font-size: 11px; margin-top: 4px;">{{ file.directory }}</div>
+                  </div>
+                </div>
+                <div style="width: 25%; text-align: right;">
+                  <div class="file-size">{{ formatFileSize(file.size) }}</div>
+                  <div class="file-modified" style="font-size: 10px; margin-top: 4px;">{{ formatDate(file.modified) }}</div>
+                </div>
               </div>
-              <!-- 以下单元格根据配置动态显示 -->
-              <div v-if="displayFields.created" class="file-cell col-created" :style="getColumnStyle('created')"><span class="file-created">{{
-                formatDate(file.created) }}</span></div>
-              <div v-if="displayFields.accessed" class="file-cell col-accessed" :style="getColumnStyle('accessed')"><span class="file-accessed">{{
-                formatDate(file.accessed) }}</span></div>
-              <div v-if="displayFields.attributes" class="file-cell col-attributes" :style="getColumnStyle('attributes')"><span class="file-attributes">{{
-                file.attributes || '-' }}</span></div>
-              <div v-if="displayFields.run_count" class="file-cell col-run-count" :style="getColumnStyle('run_count')"><span class="file-run-count">{{
-                file.run_count || 0 }}</span></div>
-              <div class="file-cell col-type" :style="getColumnStyle('type')"><span class="file-type">{{ file.extension || 'FILE' }}
-                </span></div>
             </div>
           </div>
         </div>
@@ -232,11 +201,11 @@
           </div>
         </div>
       </div>
-    </div>
+      </div>
 
-    <!-- 更新通知弹窗 -->
-    <div v-if="showUpdateNotification && updateInfo" class="update-notification">
-      <div class="update-notification-content">
+      <!-- 更新通知弹窗 -->
+      <div v-if="showUpdateNotification && updateInfo" class="update-notification">
+        <div class="update-notification-content">
         <div class="update-header">
           <div class="update-icon">🚀</div>
           <div class="update-title">发现新版本</div>
@@ -276,27 +245,28 @@
           发布时间: {{ new Date(updateInfo.publishedAt).toLocaleDateString('zh-CN') }}
         </div>
       </div>
-    </div>
-
-    <!-- 底部状态栏 -->
-    <div class="status-bar">
-      <div class="status-left">
-        <span class="status-text">{{ isSearching ? $t('status.searching') : $t('status.ready') }}</span>
-        <span v-if="everythingConnected" class="status-separator">|</span>
-        <!-- 此处可以硬编码版本号，或从后端动态获取 -->
-        <span v-if="everythingConnected" class="status-text">Everything v1.4.1</span>
       </div>
-      <div class="status-right">
-        <!-- 显示上一次搜索的耗时 -->
-        <span v-if="searchDuration > 0" class="status-text">{{ $t('search.duration', { duration: (searchDuration / 1000).toFixed(2) }) }}
-        </span>
-        <!-- 打开设置对话框的按钮 -->
-        <button @click="showConfigDialog = true" class="status-settings-button" :title="$t('settings.title')">⚙️</button>
-      </div>
-    </div>
 
-    <!-- 配置对话框组件，通过 v-if 控制显示和隐藏 -->
-    <ConfigDialog v-if="showConfigDialog" @close="showConfigDialog = false" />
+      <!-- 底部状态栏 -->
+      <div class="status-bar">
+       <div class="status-left">
+          <span class="status-text">{{ isSearching ? $t('status.searching') : $t('status.ready') }}</span>
+          <span v-if="everythingConnected" class="status-separator">|</span>
+          <!-- 此处可以硬编码版本号，或从后端动态获取 -->
+          <span v-if="everythingConnected" class="status-text">Everything v1.4.1</span>
+        </div>
+        <div class="status-right">
+          <!-- 显示上一次搜索的耗时 -->
+          <span v-if="searchDuration > 0" class="status-text">{{ $t('search.duration', { duration: (searchDuration / 1000).toFixed(2) }) }}
+          </span>
+          <!-- 打开设置对话框的按钮 -->
+          <button @click="showConfigDialog = true" class="status-settings-button" :title="$t('settings.title')">⚙️</button>
+        </div>
+      </div>
+
+      <!-- 配置对话框组件，通过 v-if 控制显示和隐藏 -->
+      <ConfigDialog v-if="showConfigDialog" @close="showConfigDialog = false" />
+    </main>
   </div>
 </template>
 
